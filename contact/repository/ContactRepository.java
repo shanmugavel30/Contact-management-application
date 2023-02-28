@@ -1,126 +1,162 @@
 package contact.repository;
 
-import java.util.HashMap;
-import java.util.Map;
-
-
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import contact.pojo.Contacts;
 
-public class ContactRepository {
-	private static ContactRepository contactInstance;
-	public Map<Integer,Contacts>contactDetails=new HashMap<>();
-	private Contacts contactref;
-	public boolean flag = true;
-	
-	private ContactRepository() {
-		
-	}
-	
-	public static ContactRepository getInstance() {
-		if(contactInstance==null) {
-			contactInstance=new ContactRepository();
-			contactInstance.setContacts();
-		}
-		return contactInstance;
-	}
-	
-	public void setContacts() {
-		contactref = new Contacts("Selvam",8870837890L,"Pudhumanai 5th Street,Tenkasi","yes");
-		contactDetails.put(1,contactref);
-		contactref = new Contacts("Vijay",7989258909L,"Thamarabarani Street,Ambai","yes");
-		contactDetails.put(2, contactref);
-		contactref = new Contacts("Guru",8568905349L,"Pillaiyar kovil Street,Srivilli puttur","no");
-		contactDetails.put(3, contactref);
-		contactref = new Contacts("Dani",635468909L,"ThalavaiAmman Street,PalayamKottai","yes");
-		contactDetails.put(4, contactref);
-		contactref = new Contacts("Deva",8925438909L,"VeeraVanjiNathan Street,Tirunelveli","no");
-		contactDetails.put(5, contactref);
-		contactref = new Contacts("Bala",8940640656L,"Kamarajar Street,Viruthunagar","yes");
-		contactDetails.put(6, contactref);
-		contactref = new Contacts("Siva",9889258909L,"Periyar Street,VaikalPlam","yes");
-		contactDetails.put(7, contactref);
-		contactref = new Contacts("Thavamani",6389296909L,"Agashthiyar Street,Kadayam","no");
-		contactDetails.put(8, contactref);
-		contactref = new Contacts("Sathish",6989768909L,"Anaikarai Street,Melakaram","yes");
-		contactDetails.put(9, contactref);
-		contactref = new Contacts("Abhishek",9345258909L,"Thamarabarani Street,Ambai","no");
-		contactDetails.put(10, contactref);
-				
-	}
-
-	public Contacts searchContact(String name) {
-		Contacts searchcontacts;
-		for (Map.Entry<Integer, Contacts> entry : contactDetails.entrySet()) {
-
-			if ( entry.getValue().getName().equalsIgnoreCase(name)) {
-
-			    searchcontacts=entry.getValue();
-				return searchcontacts;
-			}
-		}
-		return  null;
-	}
-
-	public Contacts searchContactByNum(long phoneNo) {
-		Contacts searchcontacts;
-		for (Map.Entry<Integer, Contacts> entry : contactDetails.entrySet()) {
-
-			if ( entry.getValue().getPhoneNo()==phoneNo) {
-
-			    searchcontacts=entry.getValue();
-				return searchcontacts;
-			}
-		}
-		return  null;
-	}
-
-	public void insertContact(String name, long phoneNo, String address, String fav) {
-		contactref = new Contacts(name,phoneNo,address,fav);
-		contactDetails.put(contactDetails.size()+1, contactref);
-	}
-
-	public void editContactByName(String name, long phoneNo) {
-		
-		for (Map.Entry<Integer, Contacts> entry : contactDetails.entrySet()) {
-
-			if ( entry.getValue().getName().equalsIgnoreCase(name)) {
-				entry.getValue().setPhoneNo(phoneNo);
-				flag=false;
-			}
-		}
-	}
-
-	public void editContactByNum(long phoneNo, String name) {
-		for (Map.Entry<Integer, Contacts> entry : contactDetails.entrySet()) {
-
-			if ( entry.getValue().getPhoneNo()==phoneNo) {
-				entry.getValue().setName(name);
-				flag=false;
-			}
-		}
-		
-	}
-
-	public void DeleteContact(String name) {
-		int key=0;
-		for (Map.Entry<Integer, Contacts> entry : contactDetails.entrySet()) {
-
-			if ( entry.getValue().getName().equalsIgnoreCase(name)) {
-				key=entry.getKey();
-				flag=false;
-			}
-		}
-		if(contactDetails.containsKey(key)) {
-			if(key!=0) {
-				contactDetails.remove(key);
-			}
+public class ContactRep {
+	public static ContactRep repInstance;
+	public boolean flag=false;
+	private ContactRep() {
+		startConnect();
+	}	
+	public static ContactRep getInstance() {
+		if(repInstance==null) {
+			repInstance=new ContactRep();
 			
 		}
+		return repInstance;
+	}	
+	private Connection conn;
+	private void startConnect() {
+		String url = "jdbc:mysql://localhost:3306/Contact";
+		String username = "root";
+		String password ="Selvam@20";
+		
+		try {
+			Class.forName("com.mysql.cj.jdbc.Driver");
+			this.conn =  DriverManager.getConnection(url,username,password);
+//			System.out.println("Connected successfully..");
+			
+		}catch(Exception e) {
+			System.out.println(e);
+		}
+		
+	}
+	private void endConnection(){
+        try{
+            conn.close();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+	public List<Contacts> searchContact(String key) {
+		
+		String query="select * from peoples where username=? OR phoneNum = ?";
+		List<Contacts> searchcontacts=new ArrayList<>();
+		try {
+		
+		   PreparedStatement stmt = conn.prepareStatement(query);
+		   stmt.setString(2,key);
+		   stmt.setString(1,key);
+		   ResultSet rs=stmt.executeQuery();
+		   while(rs.next()) {
+			   if(rs.getString("username")==null) {
+				   flag=false;
+				   break;
+			   }
+			   long phoneNum1=Long.parseLong(rs.getString("phoneNum"));
+			   Contacts temp=new Contacts(rs.getString("username"),phoneNum1,rs.getString("address"),rs.getString("favstate"));
+			   searchcontacts.add(temp);
+			   flag=true;		   
+		   }
+		   return searchcontacts;		   
+		}
+		catch(SQLException e){
+			e.getMessage();
+		}		
+		return  null;
 	}
 
-	public void deleteAllContact() {
-		contactDetails.clear();
+	public boolean deleteContact(String name) {
+		String query= "DELETE FROM peoples where username=?";
+		try {
+			PreparedStatement stmt = this.conn.prepareStatement(query);
+			stmt.setString(1, name);
+			int rows=stmt.executeUpdate();
+            if (rows > 0) {
+                return true;
+			}
+		}
+		catch(SQLException e){
+			System.out.println(e.getMessage());
+		}
+		return false;
 	}
 	
+	public void deleteAllContact() {
+		String query="truncate table peoples";
+		try {
+		   PreparedStatement stmt = this.conn.prepareStatement(query);
+		   stmt.executeUpdate();
+		   
+		}
+		catch(SQLException e) {
+			System.out.println(e.getMessage());
+		}
+						
+	}
 	
+	public boolean insertContact(String name, long phoneNo, String address, String fav) {
+		String query = "INSERT INTO peoples (username, phoneNum, address,favState) VALUES (?, ?, ?,?)";
+		
+		try {
+			PreparedStatement stmt = this.conn.prepareStatement(query);
+			stmt.setString(1, name);
+			stmt.setString(2, String.valueOf(phoneNo));
+			stmt.setString(3, address);
+			stmt.setString(4, fav);
+			
+			int rowsInserted = stmt.executeUpdate();
+			if (rowsInserted > 0) {
+                
+                return true;
+			}		
+		}
+		catch(SQLException e) {
+		  System.out.println(e.getMessage());
+		}
+		return false;
+	}
+	
+	public boolean editContactByNum(long phoneNo, String name) {
+		String query = "Update peoples set username=? where phoneNum= ?";
+		try {
+		    PreparedStatement stmt = this.conn.prepareStatement(query);
+		    stmt.setString(1, name);
+		    stmt.setString(2, String.valueOf(phoneNo));
+		    int rowsInserted = stmt.executeUpdate();
+			if (rowsInserted > 0) {
+                
+                return true;
+			}
+		}
+		catch(Exception e) {
+			System.out.println(e.getMessage());
+		}
+		return false;
+	}
+	
+	public boolean editContactByName(String name,long phoneNo) {
+		String query = "Update peoples set phoneNum=? where username= ?";
+		try {
+		    PreparedStatement stmt = this.conn.prepareStatement(query);
+		    stmt.setString(1, String.valueOf(phoneNo));
+		    stmt.setString(2, name);
+		    int rowsInserted = stmt.executeUpdate();
+			if (rowsInserted > 0) {
+                
+                return true;
+			}
+		}
+		catch(Exception e) {
+			System.out.println(e.getMessage());
+		}
+		return false;
+	}
 }
