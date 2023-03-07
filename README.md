@@ -30,8 +30,12 @@ Modules:
 	1.Edit by name,
 	2.Edit by phone number
 
-pojo class:<br>
-	1.Contacts
-	
+Pojo class:<br>
+	1.Contacts<br>
+
 Database:<br>
-        1.MySql
+        1.MySql<br><br>
+
+Video explanation link:https://youtu.be/FblMKGLMofo
+
+	
